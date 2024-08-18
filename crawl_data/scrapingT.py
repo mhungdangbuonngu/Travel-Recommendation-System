@@ -47,6 +47,13 @@ def get_hotel_comments(soup):
     for comment in a:
         comments.append(comment.text.strip())
     return comments
+def get_hotel_img_url(soup):
+    div=soup.find('div', class_='css-1dbjc4n r-j9b53g r-1i97xy8 r-1ta3fxp r-18u37iz r-1z0tv5g r-1udh08x')
+    img_tag=div.findAll('img')
+    img_url=[img['src'] for img in img_tag]
+
+    return img_url
+    
 def extract_hotels_url(url,i):
     info={}
     print(f"scraping URL number: {i}")
@@ -59,6 +66,7 @@ def extract_hotels_url(url,i):
     info['location'] = get_hotel_location(soup)
     info['description']=get_hotel_des(soup)
     info['comments']=get_hotel_comments(soup)
+    info['img_url']=get_hotel_img_url(soup)
     return info
 
 
