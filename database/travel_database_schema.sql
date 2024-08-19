@@ -10,18 +10,22 @@ CREATE TYPE Address AS (
 	city TEXT
 );
 
+CREATE TYPE Location AS (
+    Latitude DECIMAL(9, 6),
+    Longitude DECIMAL(9, 6)
+);
+
 -- Create the Hotel table
 CREATE TABLE Hotel (
     HotelID SERIAL NOT NULL PRIMARY KEY,
     Name VARCHAR(255),
-    Location Address,
-    Latitude DECIMAL(9, 6),
-    Longitude DECIMAL(9, 6),
+    Address Address,
+    Location Location,
     Rating DECIMAL(2, 1),
     Description TEXT,
     Img_URL JSON,
     Comments JSON
-	-- price_range JSONB
+-- price_range JSONB
 );
 
 -- Create an index on the district of the Location and Rating columns for the Hotel table
@@ -63,10 +67,9 @@ CREATE INDEX IDX_HOTELPRICE_HOTELID ON HotelPrice(HotelID);
 CREATE TABLE TouristAttraction (
     AttractionID SERIAL NOT NULL PRIMARY KEY,
     Name VARCHAR(255),
-    Location Address,
-    Latitude DECIMAL(9, 6),
-    Longitude DECIMAL(9, 6),
-	AttractionType VARCHAR(255),
+    Address Address,
+    Location Location,
+    AttractionType VARCHAR(255),
     Rating DECIMAL(2, 1),
     Tour_Duration VARCHAR(50),
     Description TEXT,
@@ -99,9 +102,8 @@ CREATE INDEX IDX_ATTRACTIONPRICE_ATTRACTIONID ON AttractionPrice(AttractionID);
 CREATE TABLE Restaurant (
     ResID SERIAL NOT NULL PRIMARY KEY,
     Name VARCHAR(255),
-    Location Address,
-    Latitude DECIMAL(9, 6),
-    Longitude DECIMAL(9, 6),
+    Address Address,
+    Location Location,
     Rating DECIMAL(2, 1),
     Price_Range VARCHAR(50),
     Description TEXT,
