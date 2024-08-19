@@ -5,7 +5,6 @@ SET search_path TO travel_database;
 
 -- Create a custom type for the Address structure
 CREATE TYPE Address AS (
-	details TEXT,
 	street TEXT,
 	district TEXT,
 	city TEXT
@@ -20,7 +19,7 @@ CREATE TABLE Hotel (
     Longitude DECIMAL(9, 6),
     Rating DECIMAL(2, 1),
     Description TEXT,
-    Img_URL VARCHAR(255),
+    Img_URL JSON,
     Comments JSON
 	-- price_range JSONB
 );
@@ -71,7 +70,7 @@ CREATE TABLE TouristAttraction (
     Rating DECIMAL(2, 1),
     Tour_Duration VARCHAR(50),
     Description TEXT,
-    Img_URL VARCHAR(255),
+    Img_URL JSON,
     Comments JSON
 );
 
