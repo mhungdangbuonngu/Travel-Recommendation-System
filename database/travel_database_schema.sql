@@ -29,7 +29,7 @@ CREATE TABLE Hotel (
 );
 
 -- Create an index on the district of the Location and Rating columns for the Hotel table
-CREATE INDEX HOTEL_IDX_ADDRESS_RATING ON Hotel(((Location).district), Rating);
+CREATE INDEX HOTEL_IDX_ADDRESS_RATING ON Hotel(((Address).district), Rating);
 
 -- Create the Price table for the Hotel table
 CREATE TABLE HotelPrice (
@@ -78,7 +78,7 @@ CREATE TABLE TouristAttraction (
 );
 
 -- Create an index on the district of the Location and Rating columns for the TouristAttraction table
-CREATE INDEX ATTRACTION_IDX_ADDRESS_RATING ON TouristAttraction(((Location).district), Rating);
+CREATE INDEX ATTRACTION_IDX_ADDRESS_RATING ON TouristAttraction(((Address).district), Rating);
 
 -- Create the Price table for the TouristAttraction table
 CREATE TABLE AttractionPrice (
@@ -105,11 +105,11 @@ CREATE TABLE Restaurant (
     Address Address,
     Location Location,
     Rating DECIMAL(2, 1),
-    Price_Range VARCHAR(50),
+    -- Price_Range VARCHAR(50),
     Description TEXT,
     Img_URL VARCHAR(255),
     Comments JSON
 );
 
 -- Create an index on the district of the Location and Rating columns for the Restaurant table
-CREATE INDEX RES_IDX_ADDRESS_RATING ON Restaurant(((Location).district), Rating);
+CREATE INDEX RES_IDX_ADDRESS_RATING ON Restaurant(((Address).district), Rating);
