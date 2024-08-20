@@ -86,7 +86,8 @@ CREATE TABLE Restaurant (
     location GEOMETRY(POINT),  -- PostGIS geography type for location data
     rating DECIMAL(2, 1),
     description TEXT,
-    embedding_description vector(768),  -- Using the vector extension for 768-dimensional embeddings
+    embedding_description vector(768),
+    pice_range JSON,  
     img_url JSON,
     comments JSON
 );
