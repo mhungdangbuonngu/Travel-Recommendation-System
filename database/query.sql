@@ -40,7 +40,10 @@ CREATE TABLE HotelPrice (
 );
 
 -- Create an index on the hotel_id for the HotelPrice table
-CREATE INDEX idx_hotelprice_hotel_id ON HotelPrice(hotel_id);
+-- CREATE INDEX hotel_idx_address_district ON Hotel(((address).district));
+-- CREATE INDEX hotel_idx_rating ON Hotel(rating);
+-- CREATE INDEX hotel_idx_location ON Hotel USING GIST(location);
+
 
 -- Create the TouristAttraction table with an embedding vector column
 CREATE TABLE TouristAttraction (
@@ -50,6 +53,7 @@ CREATE TABLE TouristAttraction (
     location GEOGRAPHY(POINT, 4326),  -- PostGIS geography type for location data
     attraction_type VARCHAR(255),
     rating DECIMAL(2, 1),
+    tour_duration INTERVAL,
     description TEXT,
     embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
     img_url JSON,
@@ -57,7 +61,10 @@ CREATE TABLE TouristAttraction (
 );
 
 -- Create an index on the district of the Address and Rating columns for the TouristAttraction table
-CREATE INDEX idx_attraction_address_rating ON TouristAttraction(((address).district), rating);
+-- CREATE INDEX attraction_idx_address_district ON TouristAttraction(((address).district));
+-- CREATE INDEX attraction_idx_rating ON TouristAttraction(rating);
+-- CREATE INDEX attraction_idx_location ON TouristAttraction USING GIST(location);
+
 
 -- Create the Price table for the TouristAttraction table
 CREATE TABLE AttractionPrice (
@@ -69,7 +76,7 @@ CREATE TABLE AttractionPrice (
 );
 
 -- Create an index on the attraction_id for the AttractionPrice table
-CREATE INDEX idx_attractionprice_attraction_id ON AttractionPrice(attraction_id);
+-- CREATE INDEX idx_attractionprice_attractionid ON AttractionPrice(attraction_id);
 
 -- Create the Restaurant table with an embedding vector column
 CREATE TABLE Restaurant (
@@ -85,5 +92,6 @@ CREATE TABLE Restaurant (
 );
 
 -- Create an index on the district of the Address and Rating columns for the Restaurant table
-CREATE INDEX idx_res_address_rating ON Restaurant(((address).district), rating);
-
+-- CREATE INDEX res_idx_address_district ON Restaurant(((address).district));
+-- CREATE INDEX res_idx_rating ON Restaurant(rating);
+-- CREATE INDEX res_idx_location ON Restaurant USING GIST(location);
