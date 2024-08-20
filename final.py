@@ -191,69 +191,59 @@ class AudioRecorder:
             conn.close()
             return
 
-
         response = chain.invoke(query)
         response_text = str(response.content)
         cleaned_json_str = re.search(r'\{.*?\}', response_text, re.DOTALL).group(0)
         result_dict = json.loads(cleaned_json_str)
         self.update_text(str(result_dict))
+        
+        embedding_query = model.encode(result_dict['Description'])
+        embedding_query_list = embedding_query.tolist()
+        
         cur.execute("""
-        SELECT
-            h.HotelID,
-            h.Name,
-            (h.Address).street AS Street,
-            (h.Address).district AS District,
-            (h.Address).city AS City,
-            h.Rating,
-            h.Description,
-            h.Comments,
-            p.Price,
-            p.RoomType,
-            p.Capacity
-        FROM
-            travel_database.Hotel h
-        JOIN
-            travel_database.HotelPrice p ON h.HotelID = p.HotelID
-        WHERE
-        ((h.Address).district = %s OR %s IS NULL) AND
-        ((h.Address).city = %s OR %s IS NULL)
-        """,(
-            result_dict['District'],
-            result_dict['District'],
-            result_dict['City'],
-            result_dict['City']
-        ))
+            WITH query_embedding AS (
+                SELECT %s::vector(768) AS query_vector
+            ),
+            similarity_scores AS (
+                SELECT
+                    h.hotel_id,
+                    h.name,
+                    h.address,
+                    h.rating,
+                    h.description,
+                    (1 - (h.embedding_description <=> query_vector)) AS similarity
+                FROM
+                    Hotel h
+                    CROSS JOIN query_embedding
+                WHERE
+                    (h.address).city = %s
+                ORDER BY
+                    similarity DESC
+                LIMIT 2
+            )
+            -- Chọn 2 khách sạn có độ tương đồng cao nhất
+            SELECT
+                hotel_id,
+                name,
+                address,
+                rating,
+                description,
+                similarity
+            FROM
+                similarity_scores;
+        """, (embedding_query_list, result_dict['City']))
 
-        # Lấy kết quả và so sánh mô tả
         rows = cur.fetchall()
-        descriptions = [row[6] for row in rows]
-        descriptions_with_info = []
-        # Mô tả từ result
-        result_description = result_dict['Description'] if result_dict['Description'] else ""
-        result_embedding = model.encode([result_description])
-
-        # So sánh và sắp xếp kết quả
-        for row in rows:
-            description = row[6]
-            embedding = model.encode([description])
-            similarity = cosine_similarity(result_embedding, embedding)[0][0]
-            descriptions_with_info.append((row, description, similarity))
-
-        # Sắp xếp theo mức độ liên quan giảm dần
-        descriptions_with_info.sort(key=lambda x: x[2], reverse=True)
-
+   
         self.update_text(f"Yêu cầu người dùng: {query}")
-        for info in descriptions_with_info:
-            row, description, similarity = info
+        for row in rows:
             self.update_text(f"HotelID: {row[0]}")
             self.update_text(f"Name: {row[1]}")
             self.update_text(f"Address: {row[2]}, {row[3]}, {row[4]}")
             self.update_text(f"Rating: {row[5]}")
             self.update_text(f"Description: {row[6]}")
             self.update_text(f"Similarity: {similarity:.4f}")
-            self.update_text(f"Comments: {row[7]}")
-            self.update_text(f"Price: {row[8]}, RoomType: {row[9]}, Capacity: {row[10]}")
-            self.update_text("\n")
+            self.update_text("-" * 40)
 
         cur.close()
         conn.close()
