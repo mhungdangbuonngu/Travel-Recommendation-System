@@ -22,7 +22,7 @@ CREATE TABLE Hotel (
     location GEOMETRY(POINT),  -- PostGIS geography type for location data
     rating DECIMAL(2, 1),
     description TEXT,
-    embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
+    embedding_description vector(768),  -- Using the vector extension for 768-dimensional embeddings
     img_url JSON,
     comments JSON
 );
@@ -55,7 +55,7 @@ CREATE TABLE TouristAttraction (
     rating DECIMAL(2, 1),
     tour_duration INTERVAL,
     description TEXT,
-    embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
+    embedding_description vector(768),  -- Using the vector extension for 768-dimensional embeddings
     img_url JSON,
     comments JSON
 );
@@ -86,7 +86,7 @@ CREATE TABLE Restaurant (
     location GEOMETRY(POINT),  -- PostGIS geography type for location data
     rating DECIMAL(2, 1),
     description TEXT,
-    embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
+    embedding_description vector(768),  -- Using the vector extension for 768-dimensional embeddings
     img_url JSON,
     comments JSON
 );
