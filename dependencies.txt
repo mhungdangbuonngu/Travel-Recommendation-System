@@ -1,0 +1,7 @@
+pyaudio
+speech_recognition
+langchain_core
+langchain_google_genai
+sentence_transformers
+scikit-learn
+psycopg2
