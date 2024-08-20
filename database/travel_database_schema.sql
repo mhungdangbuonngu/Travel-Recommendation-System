@@ -107,7 +107,7 @@ CREATE TABLE Restaurant (
     Rating DECIMAL(2, 1),
     -- Price_Range VARCHAR(50),
     Description TEXT,
-    Img_URL VARCHAR(255),
+    Img_URL JSON,
     Comments JSON
 );
 
