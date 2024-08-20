@@ -8,7 +8,6 @@ from tkinter import scrolledtext
 from tkinter import font
 import json
 import re
-import psycopg2
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 from sentence_transformers import SentenceTransformer
@@ -16,6 +15,7 @@ from sklearn.metrics.pairwise import cosine_similarity
 import os
 import io
 import argparse
+import psycopg2
 
 chunk = 1024  # Record in chunks of 1024 samples
 sample_format = pyaudio.paInt16  # 16 bits per sample
@@ -182,7 +182,7 @@ class AudioRecorder:
         conn = psycopg2.connect(postgres_url)
         cur = conn.cursor()
 
-        cur.execute("SET search_path TO travel_database;")
+        cur.execute("SET search_path TO travel_database, public;")
 
         cur.execute("SELECT * FROM information_schema.tables WHERE table_name = 'hotel';")
         if not cur.fetchone():
@@ -239,10 +239,10 @@ class AudioRecorder:
         for row in rows:
             self.update_text(f"HotelID: {row[0]}")
             self.update_text(f"Name: {row[1]}")
-            self.update_text(f"Address: {row[2]}, {row[3]}, {row[4]}")
-            self.update_text(f"Rating: {row[5]}")
-            self.update_text(f"Description: {row[6]}")
-            self.update_text(f"Similarity: {similarity:.4f}")
+            self.update_text(f"Address: {row[2]}")
+            self.update_text(f"Rating: {row[3]}")
+            self.update_text(f"Description: {row[4]}")
+            self.update_text(f"Similarity: {row[5]}")
             self.update_text("-" * 40)
 
         cur.close()
