@@ -1,11 +1,11 @@
+
 -- Enable PostGIS and vector extensions
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS vector;
-
 -- Drop the existing schema if it exists
 DROP SCHEMA IF EXISTS travel_database CASCADE;
 CREATE SCHEMA IF NOT EXISTS travel_database;
-SET search_path TO travel_database;
+SET search_path TO travel_database, public;
 
 -- Create a custom type for the Address structure
 CREATE TYPE Address AS (
@@ -19,7 +19,7 @@ CREATE TABLE Hotel (
     hotel_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     address Address,
-    location GEOGRAPHY(POINT, 4326),  -- PostGIS geography type for location data
+    location GEOMETRY(POINT),  -- PostGIS geography type for location data
     rating DECIMAL(2, 1),
     description TEXT,
     embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
@@ -50,7 +50,7 @@ CREATE TABLE TouristAttraction (
     attraction_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     address Address,
-    location GEOGRAPHY(POINT, 4326),  -- PostGIS geography type for location data
+    location GEOMETRY(POINT),  -- PostGIS geography type for location data
     attraction_type VARCHAR(255),
     rating DECIMAL(2, 1),
     tour_duration INTERVAL,
@@ -83,10 +83,10 @@ CREATE TABLE Restaurant (
     res_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     address Address,
-    location GEOGRAPHY(POINT, 4326),  -- PostGIS geography type for location data
+    location GEOMETRY(POINT),  -- PostGIS geography type for location data
     rating DECIMAL(2, 1),
-    embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
     description TEXT,
+    embedding vector(768),  -- Using the vector extension for 768-dimensional embeddings
     img_url JSON,
     comments JSON
 );
