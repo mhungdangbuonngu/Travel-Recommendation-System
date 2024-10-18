@@ -3,29 +3,62 @@ import streamlit as st
 from streamlit_folium import st_folium
 import folium
 import random
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_google_genai import ChatGoogleGenerativeAI
+import os
+import re
+page = st.title("Travel Recommendation System from USTH")
+if "api" not in st.session_state:
+    st.session_state.api=None
+if 'model' not in st.session_state:
+    st.session_state.model=None
+@st.cache_resource
+def get_gemini(api):
+    os.environ["GOOGLE_API_KEY"]=api
+    return ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
+    temperature=0,
+    max_tokens=None,
+    timeout=None,
+    max_retries=2,
+)
 
-# Hộp nhập để yêu cầu nhập postgres_url trước khi sử dụng ứng dụng
-@st.dialog("Cài đặt Postgres URL")
-def setup_postgres():
+@st.dialog("cai dat api_google, postgresql_url")
+def setup_api_url():
     st.markdown(
         """
-        Để sử dụng ứng dụng này, bạn cần cung cấp Postgres URL. Vui lòng nhập URL kết nối bên dưới.
+        input API and db url:
         """
     )
+    google_api=st.text_input("API:","")
     postgres_url = st.text_input("Postgres URL:", "")
     if st.button("Lưu"):
         st.session_state.postgres_url = postgres_url
+        st.session_state.api=google_api
         st.rerun()
 
-# Kiểm tra nếu postgres_url chưa được nhập, yêu cầu người dùng nhập
-if 'postgres_url' not in st.session_state:
-    setup_postgres()
+if st.session_state.api is None or st.session_state.postgres_url is None:
+    setup_api_url()
+if st.session_state.api and st.session_state.model is None:
+    st.session_state.model=get_gemini(st.session_state.api)
 
+# Kiểm tra nếu postgres_url chưa được nhập, yêu cầu người dùng nhập
+# Hộp nhập để yêu cầu nhập postgres_url trước khi sử dụng ứng dụng
+def get_cautraloi(input):
+    template="""you is a man who answer this question : {question}"""
+    prompt = ChatPromptTemplate.from_template(template)
+    chain = prompt | st.session_state.model
+    response=chain.invoke (
+        {"question" : input}
+    )
+    response_gemini = str(response.content)
+    return response_gemini
 # Chỉ tiếp tục chạy nếu đã có postgres_url
 if 'postgres_url' in st.session_state and st.session_state.postgres_url:
     # Hàm kết nối và truy vấn dữ liệu từ cơ sở dữ liệu theo loại
 
     # Hàm kết nối và truy vấn dữ liệu từ cơ sở dữ liệu theo loại
+    @st.cache_data
     def get_data_by_type(data_type):
         # Kết nối với cơ sở dữ liệu PostgreSQL
         conn = psycopg2.connect(st.session_state.postgres_url)
@@ -62,7 +95,8 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
 
     # Kiểm tra nếu dữ liệu của loại đã chọn chưa được lưu trong session_state thì mới query
     if f'{data_type}_data' not in st.session_state:
-        st.session_state[f'{data_type}_data'], st.session_state[f'{data_type}_id_col'] = get_data_by_type(data_type)
+        st.session_state[f'{data_type}_datfa'], st.session_state[f'{data_type}_id_col'] = get_data_by_type(data_type)
+
 
     # Lấy dữ liệu từ session_state
     data = st.session_state[f'{data_type}_data']
@@ -101,7 +135,7 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                     location=[lat, lon],
                     popup=name,
                     icon=folium.Icon(color="green")
-                ).add_to(mymap)
+                )
 
         # Hiển thị bản đồ trong cột 1
         st_data = st_folium(mymap, width=700, height=500)
@@ -131,7 +165,7 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                     st.session_state.last_selected = name
 
                     break
-
+                    
     # ---- Thao tác với các nút và hội thoại trong sidebar ----
     with st.sidebar:
         # Thêm nút "Tạo kịch bản mới"
@@ -186,7 +220,8 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                 # Thêm hội thoại người dùng vào kịch bản đã chọn
                 st.session_state.scenarios[selected_scenario]["conversations"].append(f"User: {conversation_input}")
                 # Thêm phản hồi của bot
-                st.session_state.scenarios[selected_scenario]["conversations"].append("Bot: Ghi nhận")
+                bot_response=get_cautraloi(conversation_input)
+                st.session_state.scenarios[selected_scenario]["conversations"].append(f"Bot:{bot_response} ")
 
             # Hiển thị lịch sử chat từ kịch bản đã chọn (không bị lặp)
             st.write("Lịch sử hội thoại:")

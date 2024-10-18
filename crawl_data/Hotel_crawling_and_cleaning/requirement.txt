@@ -1,0 +1,10 @@
+psycopg2
+requests
+selenium
+bs4
+numpy
+pandas
+shapely.geometry
+csv
+sentence_transformers
+re
