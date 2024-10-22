@@ -7,6 +7,8 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
 import os
 import re
+import json
+from datetime import time
 page = st.title("Travel Recommendation System from USTH")
 if "api" not in st.session_state:
     st.session_state.api=None
@@ -42,6 +44,10 @@ if st.session_state.api is None or st.session_state.postgres_url is None:
     setup_api_url()
 if st.session_state.api and st.session_state.model is None:
     st.session_state.model=get_gemini(st.session_state.api)
+travel_type_list = ["Food Tour", "Văn hóa", "Thư giãn", "Trải nghiệm"]
+companion_list = ["friends", "family", "colleagues"]
+transport_list = ["self-drive car", "motorbike", "bicycle", "public transport"]
+city_list = ["Hà Nội"]
 
 # Kiểm tra nếu postgres_url chưa được nhập, yêu cầu người dùng nhập
 # Hộp nhập để yêu cầu nhập postgres_url trước khi sử dụng ứng dụng
@@ -74,7 +80,7 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
         return amenities_list_str
     @st.cache_data
     def get_hotel_style():
-        conn = psycopg2.connect(st.session_state.postgresql_url)
+        conn = psycopg2.connect(st.session_state.postgres_url)
         cur = conn.cursor()
         cur.execute("SET search_path TO travel_database, public;")
         cur.execute("""
@@ -240,7 +246,183 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                     st.session_state.last_selected = name
 
                     break
-                    
+    amenities_list_str=get_amenities()
+    style_list_str=get_hotel_style()
+    res_type_list_str=get_restaurant_types()
+    res_suit_list_str=get_suitable_for()
+    att_type_list_str=get_attraction_type()
+    def process_request(query):
+        template = """
+    You are an AI travel suggestion chatbot. Analyze the following travel request:
+
+    Request: "{travel_request}"
+
+    Extract general and specific requirements for Hotels, Restaurants, and Tourist Attractions, even if some are not explicitly mentioned. For each type, provide the following information:
+
+    **General Requirements:**
+    - Type: From this list: {travel_type_list} based on request or return null if not specified or only ask for one of Hotels, Restaurants, or Tourist Attractions.
+    - Number_of_people: Extract the number of people or return null if not specified.
+    - Companions: Extract the companions mentioned and from this list: {companion_list} or return null if not specified.
+    - Transportation: Identify the transportation method mentioned and from this list: {transport_list} or return null if not specified.
+    - Time: Any specific dates or time ranges mentioned or return null if not specified.
+    - City: The mentioned city (without "city" or "province") and from this list: {city_list}.
+    - Price_range: Specify as "low", "medium", or "high" based on the request.
+
+    **For Hotels, also identify:**
+    - Requirements: A summary text of specific requirements or preferences mentioned.
+    - Amenities: From this list: {amenities_list}
+    - Style: From this list: {style_list}
+
+    **For Restaurants, also identify:**
+    - Requirements: A summary text of specific requirements or preferences mentioned.
+    - Restaurant_Type: From this list: {restaurant_type_list}
+    - Suitable_For: From this list: {suitable_for_list}
+
+    **For Tourist Attractions, also identify:**
+    - Requirements: A list of specific requirements or preferences mentioned.
+    - Attraction_Type: From this list: {attraction_type_list}
+
+    Return the result using the following JSON format:
+
+    ```json
+    {{
+    "General": {{
+        "Type": "...",
+        "Number_of_people": "...",
+        "Companion": "...",
+        "Transportation": "...",
+        "Time": "...",
+        "City": "..."
+        "Price_range": "...",
+        "
+    }},
+    "Hotel": {{
+        "Requirements": ...,
+        "Amenities": [...],
+        "Style": "..."
+    }},
+    "Restaurant": {{
+        "Requirements": ...,
+        "Restaurant_Type": "...",
+        "Suitable_For": "..."
+    }},
+    "TouristAttraction": {{
+        "Attraction_Type": "..."
+    }}
+    }}
+
+    ```
+
+    Ensure the JSON is valid. Use null for any unspecified information.
+    After the JSON output, add a note in Vietnamese:
+
+    "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui lòng cho tôi biết."
+    """
+        prompt = ChatPromptTemplate.from_template(template)
+        chain = prompt | st.session_state.model
+        response = chain.invoke({
+        "travel_request": query,
+        "travel_type_list": travel_type_list,
+        "companion_list": companion_list,
+        "transport_list": transport_list,
+        "city_list": city_list,
+        "amenities_list": amenities_list_str,
+        "style_list": style_list_str,
+        "restaurant_type_list": res_type_list_str,
+        "suitable_for_list": res_suit_list_str,
+        "attraction_type_list": att_type_list_str
+    })
+
+    # Extract and parse the JSON response
+        json_match = re.search(r'\{.*\}', response.content, re.DOTALL)
+        if json_match:
+            result_dict = json.loads(json_match.group(0))
+                
+                # Print the JSON result
+                
+            return st.json(result_dict)
+    def get_response(json):
+        ask_template = """
+You are an AI travel suggestion chatbot. Analyze the following travel request:
+
+Request: "{travel_output_json}"
+
+If any fields in the JSON are null, generate a question for the missing information. Only ask for fields that are **explicitly null**.
+
+**Check the JSON output for any null values:**
+- Type: From this list: {travel_type_list}
+- Number_of_people: 
+- Companions: From this list: {companion_list}
+- Transportation: From this list: {transport_list}
+- Time: 
+- City: From this list: {city_list}
+- Price_range: 
+
+**For Hotels:**
+- Requirements: 
+- Amenities: From this list: {amenities_list}
+- Style: From this list: {style_list}
+
+**For Restaurants:**
+- Requirements: 
+- Restaurant_Type: From this list: {restaurant_type_list}
+- Suitable_For: From this list: {suitable_for_list}
+
+**For Tourist Attractions:**
+- Requirements: 
+- Attraction_Type: From this list: {attraction_type_list}
+
+---
+
+Analyze the JSON input. **If any field is null, generate the corresponding question**. **Only ask questions for fields that are explicitly null.** Ensure the final output is in **Vietnamese**, containing only the relevant questions in a natural, conversational format.
+
+**Check the JSON output for any null values and generate appropriate questions:**
+
+1. If `"Type"` is null, ask:  
+   **"Bạn muốn tìm loại hình du lịch nào? (Ví dụ: Food Tour, Văn hóa, Thư giãn, hoặc Trải nghiệm)"**
+
+2. If `"Number_of_people"` is null, ask:  
+   **"Bạn đi bao nhiêu người? (Ví dụ: 1, 2, hoặc nhóm lớn hơn)"**
+
+3. If `"Companion"` is null, ask:  
+   **"Bạn đi cùng ai? (Bạn bè, Gia đình, hoặc Đồng nghiệp)"**
+
+4. If `"Transportation"` is null, ask:  
+   **"Bạn sẽ di chuyển bằng phương tiện gì? (Ví dụ: xe hơi tự lái, xe máy, hoặc phương tiện công cộng)"**
+
+5. If `"Time"` is null, ask:  
+   **"Bạn có kế hoạch đi vào thời gian nào không? (Ngày cụ thể hoặc khoảng thời gian)"**
+
+6. If `"Price_range"` is null, ask:  
+   **"Bạn muốn ngân sách cho chuyến đi này là bao nhiêu (thấp, trung bình, cao)?"**
+
+---
+
+### Example Output:
+If the provided JSON input has `"Transportation"` and `"Time"` as `null`, the output will be:
+
+```plaintext
+Bạn sẽ di chuyển bằng phương tiện gì? (Ví dụ: xe hơi tự lái, xe máy, hoặc phương tiện công cộng)
+
+Bạn có kế hoạch đi vào thời gian nào không? (Ngày cụ thể hoặc khoảng thời gian)
+
+Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui lòng cho tôi biết.
+"""          
+        ask_prompt = ChatPromptTemplate.from_template(ask_template)
+        ask_chain = ask_prompt | st.session_state.model 
+        response1 = ask_chain.invoke({
+    "travel_output_json": json,
+    "travel_type_list": travel_type_list,
+    "companion_list": companion_list,
+    "transport_list": transport_list,
+    "city_list": city_list,
+    "amenities_list": amenities_list_str,
+    "style_list": style_list_str,
+    "restaurant_type_list": res_type_list_str,
+    "suitable_for_list": res_suit_list_str,
+    "attraction_type_list": att_type_list_str
+})   
+        return response1.content  
     # ---- Thao tác với các nút và hội thoại trong sidebar ----
     with st.sidebar:
         # Thêm nút "Tạo kịch bản mới"
@@ -248,7 +430,9 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
             new_scenario_name = f"Kịch bản {len(st.session_state.scenarios) + 1}"
             st.session_state.scenarios[new_scenario_name] = {
                 "locations": [],
+                "schedule":[],
                 "conversations": []
+                
             }  # Tạo kịch bản với danh sách địa điểm và hội thoại
             st.success(f"Đã tạo {new_scenario_name}")
 
@@ -278,6 +462,29 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                         "address": selected_info["address"]
                     })
                     st.success(f"Đã lưu {st.session_state.last_selected} vào {selected_scenario}")
+
+                    time_key = f"{selected_info['id']}_time"
+                    if time_key not in st.session_state:
+                        st.session_state[time_key] = None
+                # Cho phép người dùng chọn thời gian cho từng địa điểm đã lưu
+                    selected_time = st.time_input(
+                    f"Chọn thời gian cho {st.session_state.last_selected}:",
+                    value=None,
+                    key=time_key
+                    
+                    )       
+                    
+                    st.session_state.scenarios[selected_scenario]["schedule"].append({
+                        "id": selected_info['id'],
+                        "name": st.session_state.last_selected,
+                        "time": selected_time
+                        })
+                    # Sắp xếp danh sách theo thời gian
+                    st.session_state.scenarios[selected_scenario]["schedule"].sort(
+                            key=lambda x: x['time'] if x['time'] else time(0, 0)
+                        )   
+
+
             elif not selected_scenario:
                 st.warning("Vui lòng tạo kịch bản trước khi lưu.")
             else:
@@ -295,7 +502,8 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                 # Thêm hội thoại người dùng vào kịch bản đã chọn
                 st.session_state.scenarios[selected_scenario]["conversations"].append(f"User: {conversation_input}")
                 # Thêm phản hồi của bot
-                bot_response=get_cautraloi(conversation_input)
+                json=process_request(conversation_input)
+                bot_response=get_response(json)
                 st.session_state.scenarios[selected_scenario]["conversations"].append(f"Bot:{bot_response} ")
 
             # Hiển thị lịch sử chat từ kịch bản đã chọn (không bị lặp)
