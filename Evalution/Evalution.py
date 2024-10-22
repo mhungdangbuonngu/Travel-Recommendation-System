@@ -12,6 +12,7 @@ if "api" not in st.session_state:
     st.session_state.api=None
 if 'model' not in st.session_state:
     st.session_state.model=None
+
 @st.cache_resource
 def get_gemini(api):
     os.environ["GOOGLE_API_KEY"]=api
@@ -45,7 +46,7 @@ if st.session_state.api and st.session_state.model is None:
 # Kiểm tra nếu postgres_url chưa được nhập, yêu cầu người dùng nhập
 # Hộp nhập để yêu cầu nhập postgres_url trước khi sử dụng ứng dụng
 def get_cautraloi(input):
-    template="""you is a man who answer this question : {question}"""
+    template="""Pretend you are a local resident in Hanoi and answer this question: {question}"""
     prompt = ChatPromptTemplate.from_template(template)
     chain = prompt | st.session_state.model
     response=chain.invoke (
@@ -56,7 +57,82 @@ def get_cautraloi(input):
 # Chỉ tiếp tục chạy nếu đã có postgres_url
 if 'postgres_url' in st.session_state and st.session_state.postgres_url:
     # Hàm kết nối và truy vấn dữ liệu từ cơ sở dữ liệu theo loại
-
+    @st.cache_data
+    def get_amenities():
+        conn = psycopg2.connect(st.session_state.postgres_url)
+        cur = conn.cursor()
+        cur.execute("SET search_path TO travel_database, public;")
+        cur.execute("""
+            SELECT DISTINCT unnest(amenities) AS unique_amenities
+            FROM hotel;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        amenities_list = [row[0] for row in rows]
+        amenities_list_str = "\n    ".join(f'"{amenities_type}"' for amenities_type in amenities_list)
+        return amenities_list_str
+    @st.cache_data
+    def get_hotel_style():
+        conn = psycopg2.connect(st.session_state.postgresql_url)
+        cur = conn.cursor()
+        cur.execute("SET search_path TO travel_database, public;")
+        cur.execute("""
+            SELECT DISTINCT style
+            FROM hotel
+            WHERE style IS NOT NULL;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        att_type_list = [row[0] for row in rows]
+        att_type_list_str = "\n    ".join(f'"{att_type}"' for att_type in att_type_list)
+        return att_type_list_str
+    @st.cache_data
+    def get_attraction_type():
+        conn = psycopg2.connect(st.session_state.postgres_url)
+        cur = conn.cursor()
+        cur.execute("SET search_path TO travel_database, public;")
+        cur.execute("""
+            SELECT DISTINCT unnest(attraction_type) AS unique_attraction_type
+            FROM touristattraction;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        att_type_list = [row[0] for row in rows]
+        att_type_list_str = "\n    ".join(f'"{att_type}"' for att_type in att_type_list)
+        return att_type_list_str
+    @st.cache_data
+    def get_restaurant_types():
+        conn = psycopg2.connect(st.session_state.postgres_url)
+        cur = conn.cursor()
+        cur.execute("SET search_path TO travel_database, public;")
+        cur.execute("""
+            SELECT DISTINCT unnest(restaurant_type) AS unique_res_type
+            FROM restaurant;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        res_type_list = [row[0] for row in rows]
+        res_type_list_str = "\n    ".join(f'"{res_type}"' for res_type in res_type_list)
+        return res_type_list_str
+    @st.cache_data
+    def get_suitable_for():
+        conn = psycopg2.connect(st.session_state.postgres_url)
+        cur = conn.cursor()
+        cur.execute("SET search_path TO travel_database, public;")
+        cur.execute("""
+            SELECT DISTINCT unnest(suitable_for) AS unique_res_suit
+            FROM restaurant;
+        """)
+        rows = cur.fetchall()
+        cur.close()
+        conn.close()
+        res_suit_list = [row[0] for row in rows]
+        res_suit_list_str = "\n    ".join(f'"{res_suit}"' for res_suit in res_suit_list)
+        return res_suit_list_str 
     # Hàm kết nối và truy vấn dữ liệu từ cơ sở dữ liệu theo loại
     @st.cache_data
     def get_data_by_type(data_type):
@@ -95,8 +171,7 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
 
     # Kiểm tra nếu dữ liệu của loại đã chọn chưa được lưu trong session_state thì mới query
     if f'{data_type}_data' not in st.session_state:
-        st.session_state[f'{data_type}_datfa'], st.session_state[f'{data_type}_id_col'] = get_data_by_type(data_type)
-
+        st.session_state[f'{data_type}_data'], st.session_state[f'{data_type}_id_col'] = get_data_by_type(data_type)
 
     # Lấy dữ liệu từ session_state
     data = st.session_state[f'{data_type}_data']
@@ -135,7 +210,7 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
                     location=[lat, lon],
                     popup=name,
                     icon=folium.Icon(color="green")
-                )
+                ).add_to(mymap)
 
         # Hiển thị bản đồ trong cột 1
         st_data = st_folium(mymap, width=700, height=500)
