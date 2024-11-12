@@ -14,21 +14,28 @@ CREATE TYPE Address AS (
     city TEXT
 );
 
+CREATE TYPE OpeningHours AS (
+    open_time TIME WITH TIME ZONE,
+    close_time TIME WITH TIME ZONE
+);
+
 -- Create the Hotel table with an embedding vector column
 CREATE TABLE Hotel (
     hotel_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     address Address,
-    location GEOMETRY(POINT),  -- PostGIS geography type for location data
+    location GEOMETRY(POINT),
+    amenities TEXT[ ],
+    style TEXT,
     rating DECIMAL(2, 1),
     description TEXT,
-    embedding_description vector(768),  -- Using the vector extension for 768-dimensional embeddings
+    embedding_description vector(768),
     img_url JSON,
     comments JSON
 );
 
 -- Create an index on the district of the Address and Rating columns for the Hotel table
-CREATE INDEX idx_hotel_address_rating ON Hotel(((address).district), rating);
+-- CREATE INDEX idx_hotel_address_rating ON Hotel(((address).district), rating);
 
 -- Create the Price table for the Hotel table
 CREATE TABLE HotelPrice (
@@ -50,12 +57,13 @@ CREATE TABLE TouristAttraction (
     attraction_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     address Address,
-    location GEOMETRY(POINT),  -- PostGIS geography type for location data
+    location GEOMETRY(POINT),
     attraction_type VARCHAR(255),
+    working_hour OpeningHours,
     rating DECIMAL(2, 1),
     tour_duration INTERVAL,
     description TEXT,
-    embedding_description vector(768),  -- Using the vector extension for 768-dimensional embeddings
+    embedding_description vector(768),
     img_url JSON,
     comments JSON
 );
@@ -83,11 +91,16 @@ CREATE TABLE Restaurant (
     res_id SERIAL PRIMARY KEY,
     name VARCHAR(255),
     address Address,
-    location GEOMETRY(POINT),  -- PostGIS geography type for location data
+    location GEOMETRY(POINT),
+    working_hour OpeningHours,
+    suitable_for TEXT[],
+    restaurant_type TEXT[],
     rating DECIMAL(2, 1),
     description TEXT,
     embedding_description vector(768),
-    pice_range JSON,  
+    price_range JSON,
+    parking_available BOOLEAN NOT NULL,
+    kids_play_area BOOLEAN NOT NULL,
     img_url JSON,
     comments JSON
 );
