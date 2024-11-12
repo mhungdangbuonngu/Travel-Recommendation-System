@@ -9,6 +9,7 @@ import os
 import re
 import json
 from datetime import time
+from datetime import datetime
 page = st.title("Travel Recommendation System from USTH")
 if "api" not in st.session_state:
     st.session_state.api=None
@@ -430,8 +431,8 @@ Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui l
             new_scenario_name = f"Kịch bản {len(st.session_state.scenarios) + 1}"
             st.session_state.scenarios[new_scenario_name] = {
                 "locations": [],
-                "schedule":[],
-                "conversations": []
+                "conversations":[],
+                "schedule":[]
                 
             }  # Tạo kịch bản với danh sách địa điểm và hội thoại
             st.success(f"Đã tạo {new_scenario_name}")
@@ -447,8 +448,7 @@ Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui l
                 st.success(f"Đã xóa kịch bản {selected_scenario}")
             else:
                 st.warning("Không tìm thấy kịch bản để xóa.")
-
-        # Thêm nút Save địa điểm trong sidebar
+            
         if st.button("Save địa điểm"):
             if st.session_state.last_selected and st.session_state.last_selected in locations:
                 selected_info = locations.get(st.session_state.last_selected)  # Sử dụng get để tránh lỗi KeyError
@@ -463,32 +463,86 @@ Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui l
                     })
                     st.success(f"Đã lưu {st.session_state.last_selected} vào {selected_scenario}")
 
-                    time_key = f"{selected_info['id']}_time"
-                    if time_key not in st.session_state:
-                        st.session_state[time_key] = None
-                # Cho phép người dùng chọn thời gian cho từng địa điểm đã lưu
-                    selected_time = st.time_input(
-                    f"Chọn thời gian cho {st.session_state.last_selected}:",
-                    value=None,
-                    key=time_key
-                    
-                    )       
-                    
-                    st.session_state.scenarios[selected_scenario]["schedule"].append({
-                        "id": selected_info['id'],
-                        "name": st.session_state.last_selected,
-                        "time": selected_time
-                        })
-                    # Sắp xếp danh sách theo thời gian
-                    st.session_state.scenarios[selected_scenario]["schedule"].sort(
-                            key=lambda x: x['time'] if x['time'] else time(0, 0)
-                        )   
-
-
             elif not selected_scenario:
                 st.warning("Vui lòng tạo kịch bản trước khi lưu.")
             else:
                 st.warning("Vui lòng chọn một địa điểm hợp lệ trước khi lưu.")
+    
+        ### len lich trinh bang form ###
+        def submitted():
+            st.session_state.submitted = True
+
+
+        def reset():
+            st.session_state.submitted = False
+            st.session_state.selected_times = []
+            st.session_state.selected_ids = []
+        
+        if 'submitted' not in st.session_state:
+            st.session_state.submitted = False
+        
+        if 'selected_times' not in st.session_state:
+            st.session_state.selected_times = []
+        
+        if 'selected_ids' not in st.session_state:
+            st.session_state.selected_ids = []
+        
+        # st.write(st.button("Sắp xếp và Lưu Lịch trình")) 
+        if st.button("Sắp xếp và Lưu Lịch trình"):
+            # Create a table with time and ID selection for each location
+            
+            with st.form("schedule_form"):
+                
+                st.write("### Lịch trình cho các địa điểm")
+                # Clear previous values to avoid duplicates on reruns
+                temp_selected_times = []
+                temp_selected_ids = []
+                
+                for i, location in enumerate(st.session_state.scenarios[selected_scenario]['locations']): 
+                    col1, col2 = st.columns([2, 2])
+
+                    # Time input selection for each location
+                    selected_time = col1.time_input(
+                        f"Chọn thời gian cho địa điểm {i+1}",
+                        value=datetime.strptime("00:00",'%H:%M').time(),
+                        key=f"time_{i}"
+                    )
+
+                    # ID selection for each location
+                    selected_id = col2.selectbox(
+                        f"Chọn ID cho địa điểm {i+1}",
+                        options=[loc['id'] for loc in st.session_state.scenarios[selected_scenario]['locations']],
+                        index=[loc['id'] for loc in st.session_state.scenarios[selected_scenario]['locations']].index(location['id']),
+                        key=f"id_{i}"
+                    )
+                    
+                    temp_selected_times.append(selected_time)
+                    temp_selected_ids.append(selected_id)
+                # Submit button
+        
+                submit= st.form_submit_button("lưu lịch trình", on_click= submitted)
+                
+                if 'submitted' in st.session_state:
+                    
+                    if st.session_state.submitted==True:
+                        
+                        st.session_state.selected_times = temp_selected_times
+                        st.session_state.selected_ids = temp_selected_ids
+                        st.write("Saved Times:", st.session_state.selected_times)
+                        st.write("Saved IDs:", st.session_state.selected_ids)
+                        st.session_state.scenarios[selected_scenario]['schedule'] = []
+                        
+                        for get_time,id in zip(st.session_state.selected_times, st.session_state.selected_ids):
+                            st.session_state.scenarios[selected_scenario]['schedule'].append({
+                                'time':get_time.strftime("%-H:%-M"),
+                                'id':id
+                            })
+                        
+                        st.session_state.scenarios[selected_scenario]['schedule'].sort(key=lambda x: x['time'])
+                        st.success("Lịch trình đã được lưu và sắp xếp theo thứ tự tăng dần thời gian!")
+                    
+                    reset()
+                ###end code###
 
         # Kiểm tra biến conversation_input trong session_state
         if "conversation_input" not in st.session_state:
