@@ -2,6 +2,8 @@
 -- Enable PostGIS and vector extensions
 CREATE EXTENSION IF NOT EXISTS postgis;
 CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS unaccent;
+
 -- Drop the existing schema if it exists
 DROP SCHEMA IF EXISTS travel_database CASCADE;
 CREATE SCHEMA IF NOT EXISTS travel_database;
