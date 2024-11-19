@@ -125,6 +125,21 @@ if 'postgres_url' in st.session_state and st.session_state.postgres_url:
         res_type_list = [row[0] for row in rows]
         res_type_list_str = "\n    ".join(f'"{res_type}"' for res_type in res_type_list)
         return res_type_list_str
+    @st.cache_resource
+    def save_schedule_to_txt(scenario, filename="schedule.txt"):
+        schedule = scenario["schedule"]
+        locations = scenario["locations"]
+    
+        with open(filename, "w", encoding="utf-8") as file:
+            for item in schedule:
+                time = item["time"]
+                loc_index = item["id"]
+                location = locations[loc_index]
+                name = location["name"]
+                address = location["address"]
+                file.write(f"Thời gian: {time}\nĐịa điểm: {name}\nĐịa chỉ: {address}\n\n")
+        return filename
+    
     @st.cache_data
     def get_suitable_for():
         conn = psycopg2.connect(st.session_state.postgres_url)
@@ -487,20 +502,30 @@ Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui l
         if 'selected_ids' not in st.session_state:
             st.session_state.selected_ids = []
         
+        if 'schedule' not in st.session_state:
+            st.session_state.schedule = False        
         # st.write(st.button("Sắp xếp và Lưu Lịch trình")) 
+        
         if st.button("Sắp xếp và Lưu Lịch trình"):
             # Create a table with time and ID selection for each location
+            st.session_state.schedule = True
             
+        if st.session_state.schedule == True:
+         
             with st.form("schedule_form"):
                 
                 st.write("### Lịch trình cho các địa điểm")
                 # Clear previous values to avoid duplicates on reruns
                 temp_selected_times = []
                 temp_selected_ids = []
-                
-                for i, location in enumerate(st.session_state.scenarios[selected_scenario]['locations']): 
-                    col1, col2 = st.columns([2, 2])
-
+                selected_indices = [None] * len(st.session_state.scenarios[selected_scenario]['locations'])
+                for i in range(len(st.session_state.scenarios[selected_scenario]['locations'])):
+                    locations=st.session_state.scenarios[selected_scenario]['locations']
+                    col1, col2,col3 = st.columns([2, 2,1])
+                    available_indices = [None] + [
+                    idx for idx in range(len(st.session_state.scenarios[selected_scenario]['locations']))
+                    if idx not in selected_indices or idx == selected_indices[i]]
+                    default_index=0
                     # Time input selection for each location
                     selected_time = col1.time_input(
                         f"Chọn thời gian cho địa điểm {i+1}",
@@ -509,15 +534,17 @@ Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui l
                     )
 
                     # ID selection for each location
-                    selected_id = col2.selectbox(
+                    selected_index = col2.selectbox(
                         f"Chọn ID cho địa điểm {i+1}",
-                        options=[loc['id'] for loc in st.session_state.scenarios[selected_scenario]['locations']],
-                        index=[loc['id'] for loc in st.session_state.scenarios[selected_scenario]['locations']].index(location['id']),
-                        key=f"id_{i}"
+                        options=available_indices,
+                        format_func=lambda idx: "None" if idx is None else f"Vị trí {idx + 1}",  # Display position as "Vị trí x"
+                        index=0 if selected_indices[i] is None else available_indices.index(selected_indices[i]),
+                        key=f"position_{i}"
                     )
                     
+                    selected_indices[i] = selected_index
                     temp_selected_times.append(selected_time)
-                    temp_selected_ids.append(selected_id)
+                    temp_selected_ids.append(selected_index)
                 # Submit button
         
                 submit= st.form_submit_button("lưu lịch trình", on_click= submitted)
@@ -543,7 +570,15 @@ Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui l
                     
                     reset()
                 ###end code###
-
+        if st.button("Xuất file"):
+            filename = save_schedule_to_txt(st.session_state.scenarios[selected_scenario])
+            st.success(f"Lịch trình đã được lưu vào file: {filename}")
+            st.download_button(
+                label="Tải xuống file",
+                data=open(filename, "rb"),
+                file_name=filename,
+                mime="text/plain",
+            )
         # Kiểm tra biến conversation_input trong session_state
         if "conversation_input" not in st.session_state:
             st.session_state.conversation_input = ""
