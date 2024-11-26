@@ -472,34 +472,35 @@ def ask_user(ask_chain, response, travel_type_list, companion_list, transport_li
         "suitable_for_list": res_suit_list_str,
         "attraction_type_list": att_type_list_str
     })
-
+    if not response1.content:
+        st.error("The response content is empty.")
+        return {}
     st.session_state['contents'].append({"role": "assistant", "content":"Cảm ơn bạn đã cung cấp thông tin! Tuy nhiên, tôi cần thêm một số thông tin để giúp bạn tốt hơn:"})
     # print(response1.content)
-    user_responses = {}
+    
 
     # Process each line in the response content as a separate question
-    questions = response1.content.splitlines()
-    for question in questions:
-        # Remove "plaintext:" prefix if it exists and trim whitespace
-        question = question.replace("```plaintext", "").replace("```", "").strip()
-        st.session_state['contents'].append({"role": "assistant", "content":f"{question}"})
-        # Skip empty lines and avoid re-asking filled fields
-        if not question or "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào" in question:
-            st.session_state['contents'].append({"role": "assistant", "content":f'{question}'})  # Print closing statement without asking for input
-            continue
-        
-        # Ask the user for input and store the response
-        user_input = st.chat_input(f"{question} ")
-        while user_input is not None:
-            user_responses[question] = f"[{user_input.strip()}]"
-        
-    # Print the responses collected for review
-    # print("\nCollected User Responses:")
-    # for field, answer in user_responses.items():
-    #     print(f"{field}: {answer}")
-    
-    st.session_state['contents'].append({"role": "assistant", "content": "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui lòng cho tôi biết."})
-    return user_responses
+    if 'questions' not in st.session_state or 'current_question_index' not in st.session_state:
+        st.session_state['questions'] = [q.strip() for q in response1.content.splitlines() if q.strip()]  # Filter empty lines
+        st.session_state['current_question_index'] = 0
+        st.session_state['user_responses'] = {}
+    questions = st.session_state['questions']
+    current_index = st.session_state['current_question_index']
+    if current_index >= len(questions):
+        st.session_state['contents'].append({"role": "assistant", "content": "nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui lòng cho tôi biết."})
+        return st.session_state['user_responses']
+
+    question = questions[current_index]
+    if question and "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào" not in question:
+        st.session_state['contents'].append({"role": "assistant", "content": question})
+
+    # Get user input for the current question
+        user_input = st.chat_input(f"{question}")
+        if user_input:
+            st.session_state['user_responses'][question] = f"[{user_input.strip()}]"
+            st.session_state['current_question_index'] += 1
+
+    return st.session_state['user_responses']
 #ham update json
 
 def update_requires(update_chain, first_respond, travel_type_list, companion_list, transport_list, city_list, update_respond,
