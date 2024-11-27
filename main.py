@@ -472,35 +472,37 @@ def ask_user(ask_chain, response, travel_type_list, companion_list, transport_li
         "suitable_for_list": res_suit_list_str,
         "attraction_type_list": att_type_list_str
     })
+    
     if not response1.content:
         st.error("The response content is empty.")
         return {}
-    st.session_state['contents'].append({"role": "assistant", "content":"Cảm ơn bạn đã cung cấp thông tin! Tuy nhiên, tôi cần thêm một số thông tin để giúp bạn tốt hơn:"})
-    # print(response1.content)
-    
+    st.session_state['contents'].append({"role": "assistant", "content":f"{response1.content.splitlines()[1]}"})
+    #st.session_state['contents'].append({"role": "assistant", "content":"Cảm ơn bạn đã cung cấp thông tin! Tuy nhiên, tôi cần thêm một số thông tin để giúp bạn tốt hơn:"})
 
-    # Process each line in the response content as a separate question
-    if 'questions' not in st.session_state or 'current_question_index' not in st.session_state:
-        st.session_state['questions'] = [q.strip() for q in response1.content.splitlines() if q.strip()]  # Filter empty lines
-        st.session_state['current_question_index'] = 0
-        st.session_state['user_responses'] = {}
-    questions = st.session_state['questions']
-    current_index = st.session_state['current_question_index']
-    if current_index >= len(questions):
-        st.session_state['contents'].append({"role": "assistant", "content": "nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui lòng cho tôi biết."})
-        return st.session_state['user_responses']
+    # # Process each line in the response content as a separate question
+    # if 'questions' not in st.session_state or 'current_question_index' not in st.session_state:
+    #     st.session_state['questions'] = [q.strip() for q in response1.content.splitlines() if q.strip()]  # Filter empty lines
+    #     st.session_state['current_question_index'] = 0
+    #     st.session_state['user_responses'] = {}
 
-    question = questions[current_index]
-    if question and "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào" not in question:
-        st.session_state['contents'].append({"role": "assistant", "content": question})
+    # questions = st.session_state['questions']
+    # current_index = st.session_state['current_question_index']
 
-    # Get user input for the current question
-        user_input = st.chat_input(f"{question}")
-        if user_input:
-            st.session_state['user_responses'][question] = f"[{user_input.strip()}]"
-            st.session_state['current_question_index'] += 1
+    # if current_index >= len(questions):
+    #     st.session_state['contents'].append({"role": "assistant", "content": "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào, vui lòng cho tôi biết."})
+    #     return st.session_state['user_responses']
 
-    return st.session_state['user_responses']
+    # question = questions[current_index]
+    # if question and "Nếu bạn cần thay đổi hoặc bổ sung bất kỳ thông tin nào" not in question:
+    #     st.session_state['contents'].append({"role": "assistant", "content": question})
+
+    # # Get user input for the current question
+    # user_input = st.chat_input(f"{question}")
+    # if user_input:
+    #     st.session_state['user_responses'][question] = f"[{user_input.strip()}]"
+    #     st.session_state['current_question_index'] += 1
+
+    # return st.session_state['user_responses']
 #ham update json
 
 def update_requires(update_chain, first_respond, travel_type_list, companion_list, transport_list, city_list, update_respond,
@@ -545,30 +547,38 @@ def chat_content():
     user_input = st.session_state.content
     # Thêm tin nhắn của người dùng vào list trong session_state
     st.session_state['contents'].append({"role": "user", "content": user_input})
-    json_file=user_requires(chain, user_input, travel_type_list, companion_list, transport_list, city_list, district_list, 
+    if st.session_state['json'] is None:
+        st.session_state['json']=user_requires(chain, user_input, travel_type_list, companion_list, transport_list, city_list, district_list, 
                   amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str)
-    ask_again_respond = ask_user(ask_chain, json_file, travel_type_list, companion_list, transport_list, city_list, district_list, amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str) 
+    
+    ask_user(ask_chain, st.session_state['json'], travel_type_list, companion_list, transport_list, city_list, district_list, amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str) 
     # Thêm phản hồi của bot vào list trong session_state
-    update_requires_respond = update_requires(update_chain, ask_again_respond, travel_type_list, companion_list, transport_list, city_list, ask_again_respond,amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str)
+    st.session_state['json'] = update_requires(update_chain, st.session_state['json'], travel_type_list, companion_list, transport_list, city_list, user_input,amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str)
     # st.session_state['contents'].append({"role": "assistant", "content": bot_response})
-    return update_requires_respond
+    return st.session_state['json']
 
 # Khởi tạo `contents` để lưu lịch sử hội thoại nếu chưa có
 if 'contents' not in st.session_state:
     st.session_state['contents'] = []
+    st.session_state['json'] = None
     border = False
 else:
     border = True
 
 # Chia bố cục thành 2 cột chiếm hết chiều ngang màn hình
-col1, col2 = st.columns([1, 1])  # Tỷ lệ 1:1, bạn có thể thay đổi tỷ lệ này tùy ý
+col1, col2,col3 = st.columns([1, 1, 1])  # Tỷ lệ 1:1, bạn có thể thay đổi tỷ lệ này tùy ý
 
 # Cột bên trái: Giao diện chat
 with col1:
     with st.container(border=border):
         with st.container():
-            # Ô nhập chat cố định
-            st.chat_input("Nhập yêu cầu của bạn...", key='content', on_submit=chat_content) 
+
+        # User input for the next message
+            user_input = st.chat_input("Nhập yêu cầu của bạn...", key='content', on_submit=chat_content)
+
+        # Trigger chat content function when the user submits input
+            # if user_input:
+            #     chat_content()
             button_b_pos = "0rem"
             button_css = float_css_helper(width="2.2rem", bottom=button_b_pos, transition=0)
             float_parent(css=button_css)
@@ -619,3 +629,5 @@ with col2:
         for location in mock_locations:
             st.write(f"**{location['name']}**: {location['description']}")
 
+with col3:
+    st.write(st.session_state['json'])
