@@ -704,8 +704,13 @@ def print_itinerary_experience(itinerary):
             route = data['routes'][0]['geometry']['coordinates']
             route_latlon = [[coord[1], coord[0]] for coord in route]  # Đảo ngược tọa độ
 
-            # Thêm đường đi vào bản đồ với màu sắc lộ trình tương ứng
-            folium.PolyLine(route_latlon, color=route_colors[i % len(route_colors)], weight=5, opacity=0.8).add_to(map_object)
+            # Tính màu nhạt dần và độ mờ
+            color_intensity = 255 - int((i / (len(locations) - 1)) * 255)
+            color_hex = f"#{color_intensity:02x}{color_intensity:02x}ff"  # Từ xanh dương chuyển dần sang trắng
+            opacity = 0.8 - (i / (len(locations) - 1)) * 0.5  # Độ mờ giảm dần từ 0.8 đến 0.3
+
+            # Thêm đường đi vào bản đồ với màu sắc và độ nhạt dần
+            folium.PolyLine(route_latlon, color=color_hex, weight=5, opacity=opacity).add_to(map_object)
 
     # Hiển thị bản đồ
     st_data = st_folium(map_object, width=700, height=500)
