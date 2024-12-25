@@ -18,7 +18,7 @@ import psycopg2
 # Khởi tạo `float_init`
 float_init(theme=True, include_unstable_primary=False)
 
-gemini_key = "AIzaSyARgQ6Cw-IV0hBL0H0h_lTAXfbevFAytPc"
+gemini_key = "AIzaSyB2JQm5KKwwb5thC2iRTbMaVNNFajeHpsw"
 
 @st.cache_resource
 def get_gemini(key):
@@ -493,6 +493,32 @@ update_prompt = ChatPromptTemplate.from_template(updated_query)
 update_chain = update_prompt | st.session_state.model
 #ham def lay json file
 
+end_query = """
+You are an AI travel assistant. Your task is to analyze the user query and determine if the user explicitly indicates they do not want to provide further information. 
+
+Consider these examples:
+* "không tôi không muốn gì thêm" - True
+* "tôi không cần gì thêm" - True
+* "như vậy là đủ rồi" - True
+* "tôi muốn thêm thông tin về khách sạn" - False
+* "tôi chưa quyết định" - False
+
+Update request: "{update_travel_request}" 
+
+Return "True" or "False" only. Do not provide any additional explanations.
+"""
+
+final_prompt=ChatPromptTemplate.from_template(end_query)
+final_chain= final_prompt | st.session_state.model
+
+def turn_on_schedule(final_chain, query):
+    response=final_chain.invoke({
+        'update_travel_request':query,
+        # 'travel_output_json':json     
+    })
+    if "true" in response.content.lower():
+        st.session_state['schedule'] = True
+    return st.session_state['schedule']
 def user_requires(chain, query, travel_type_list, companion_list, transport_list, city_list, district_list, 
                   amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str):
     response = chain.invoke({
@@ -610,9 +636,7 @@ def update_requires(update_chain, first_respond, travel_type_list, companion_lis
         # print("Raw response:", response.content)
         return None
 
-template3='''
 
-'''
 def parse_tour_duration(duration_str):
     # Parse the duration string in 'HH:MM:SS' format
     time_parts = list(map(int, duration_str.split(':')))
@@ -878,6 +902,7 @@ def genetic_algorithm_experience(hotels, tourist_attractions, restaurants, gener
 
 # Hàm xử lý nội dung chat
 def chat_content():
+   
     # Lưu tin nhắn người dùng vào session_state
     user_input = st.session_state.content
     # Thêm tin nhắn của người dùng vào list trong session_state
@@ -887,8 +912,8 @@ def chat_content():
                   amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str)
     st.session_state['json'] = update_requires(update_chain, st.session_state['json'], travel_type_list, companion_list, transport_list, city_list, user_input,amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str)
     ask_user(ask_chain, st.session_state['json'], travel_type_list, companion_list, transport_list, city_list, district_list, amenities_list_str, style_list_str, res_type_list_str, res_suit_list_str, att_type_list_str)
-
-    if user_input == 'None':
+    st.session_state['schedule']=turn_on_schedule(final_chain,user_input)
+    if (st.session_state['schedule'] == True):
         response=st.session_state['json']
         general_requirements = response.get("General", {})
         hotel_requirements = response.get("Hotel", {})
@@ -915,6 +940,7 @@ def chat_content():
 if 'contents' not in st.session_state:
     st.session_state['contents'] = []
     st.session_state['json'] = None
+    st.session_state['schedule']= False
 if 'locations' not in st.session_state:
     st.session_state['locations'] = False  # Khởi tạo với lộ trình trống
 
@@ -1135,5 +1161,5 @@ with col2:
 # print_itinerary_relaxation(best_itinerary_relaxation)
 with col3:
     st.session_state['json']
-
+    st.session_state['schedule']
 
