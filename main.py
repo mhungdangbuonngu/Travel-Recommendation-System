@@ -947,7 +947,7 @@ if 'locations' not in st.session_state:
 border = False
 
 # Chia bố cục thành 2 cột chiếm hết chiều ngang màn hình
-col1, col2, col3 = st.columns([1, 1, 1])  # Tỷ lệ 1:1, bạn có thể thay đổi tỷ lệ này tùy ý
+col1, col2 = st.columns([1, 1])  # Tỷ lệ 1:1, bạn có thể thay đổi tỷ lệ này tùy ý
 
 
 # Cột bên trái: Giao diện chat
@@ -1026,7 +1026,7 @@ def print_itinerary_experience(itinerary):
                 distance_meters = haversine([lat1, lon1], [lat2, lon2])
                 distance_km = distance_meters / 1000
                 total_distance += distance_km
-                travel_time_hours = distance_km / 40  # Tốc độ 40 km/h
+                travel_time_hours = distance_km / 30  # Tốc độ 30 km/h
                 travel_time = timedelta(hours=travel_time_hours)
                 travel_time_minutes = int(travel_time.total_seconds() / 60)
 
@@ -1103,7 +1103,7 @@ def print_itinerary_experience(itinerary):
             else:
                 duration = timedelta(hours=1)
 
-            total_time += travel_time + duration
+            total_time += travel_time + int(duration)
 
             # Tính giá
             if 'price' in place and isinstance(place['price'], dict):
@@ -1114,20 +1114,28 @@ def print_itinerary_experience(itinerary):
             total_price += price
 
             # In thông tin địa điểm
-            st.write(f"\n**Di chuyển đến {place['name']}:**")
-            st.write(f"  Khoảng cách: {distance_km:.2f} km")
-            st.write(f"  Thời gian di chuyển: {travel_time_minutes} phút")
-            st.write(f"Tại {place['name']}:")
-            st.write(f"  Loại hình: {place.get('attraction_type', 'Nhà hàng')}")
-            st.write(f"  Đánh giá: {place['rating']}")
-            st.write(f"  Giá: VND{price}")
+            st.write(f"\n**{i}: {place['name']}**")
+            st.markdown(f"""
+            - Khoảng cách: {distance_km:.2f} km
+            - Thời gian di chuyển: {travel_time_minutes} phút
+            - Loại hình: {place.get('attraction_type', 'Nhà hàng')}
+            - Đánh giá: {place['rating']}
+            - Giá: VND{price:,.0f}
+            - Vị trí: {place['address']}
+            """)
+            # st.write(f"  Khoảng cách: {distance_km:.2f} km")
+            # st.write(f"  Thời gian di chuyển: {travel_time_minutes} phút")
+            # st.write(f"Tại {place['name']}:")
+            # st.write(f"  Loại hình: {place.get('attraction_type', 'Nhà hàng')}")
+            # st.write(f"  Đánh giá: {place['rating']}")
+            # st.write(f"  Giá: VND{price}")
             if 'tour_duration' in place:
                 duration_hours = int(duration.total_seconds() / 3600)
                 duration_minutes = int((duration.total_seconds() % 3600) / 60)
-                st.write(f"  Thời gian ở lại: {duration_hours} giờ {duration_minutes} phút")
+                st.markdown(f" -Thời gian ở lại: {duration_hours} giờ {duration_minutes} phút")
             else:
-                st.write("  Thời gian ở lại: 1 giờ")
-            st.write(f"  Vị trí: {place['location']['coordinates']}")
+                st.markdown(" -Thời gian ở lại: 1 giờ")
+            # st.write(f"  Vị trí: {place['location']['coordinates']}") ## need to fix
 
     total_hours = total_time.total_seconds() / 3600
     st.write(f"\n**Tổng thời gian (bao gồm di chuyển):** {total_hours:.2f} giờ")
@@ -1159,7 +1167,7 @@ with col2:
 #     user_requirements=update_requires_respond
 # )
 # print_itinerary_relaxation(best_itinerary_relaxation)
-with col3:
-    st.session_state['json']
-    st.session_state['schedule']
+# with col3:
+#     st.session_state['json']
+#     st.session_state['schedule']
 
